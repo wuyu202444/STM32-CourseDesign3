@@ -25,6 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "iwdg.h"
 #include "stdio.h"
 #include "bsp_oled.h"
 #include "bsp_seg.h"
@@ -324,7 +325,8 @@ void StartKeepAlive(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    HAL_IWDG_Refresh(&hiwdg);
+    osDelay(1000);
   }
   /* USER CODE END StartKeepAlive */
 }

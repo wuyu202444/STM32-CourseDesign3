@@ -29,6 +29,7 @@
 #include "bsp_oled.h"
 #include "bsp_seg.h"
 #include "bsp_lm75.h"
+#include "bsp_adc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -208,12 +209,19 @@ void StartDefaultTask(void *argument)
   OLED_Init();
 
   printf("System Starting...\r\n");
+
+  // 1. 初始化传感器
+  // 1.1 LM75 (I2C)
   if (BSP_LM75_Init() == 0) {
-    printf("LM75 Init Success!\r\n");
+    printf("[OK] LM75 Init\r\n");
   } else {
-    printf("LM75 Init Failed! Check wiring.\r\n");
+    printf("[ERR] LM75 Init Failed\r\n");
   }
-  printf("System Start Success!\r\n");
+  // 1.2 ADC (DMA)
+  BSP_ADC_Init();
+  printf("[OK] ADC DMA Started\r\n");
+
+  printf("System Startup Success!\r\n");
 
   /* Infinite loop */
   for(;;)
@@ -241,13 +249,10 @@ void StartDefaultTask(void *argument)
 void StartSensorTask(void *argument)
 {
   /* USER CODE BEGIN StartSensorTask */
-
   /* Infinite loop */
   for(;;)
   {
-
-    // 4. RTOS 延时 (让出 CPU 500ms)
-    osDelay(500);
+    osDelay(1);
   }
   /* USER CODE END StartSensorTask */
 }

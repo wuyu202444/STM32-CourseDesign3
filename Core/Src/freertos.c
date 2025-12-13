@@ -27,6 +27,7 @@
 /* USER CODE BEGIN Includes */
 #include "iwdg.h"
 #include "stdio.h"
+#include <stdbool.h> // 使用 bool 类型
 
 #include "bsp_oled.h"
 #include "bsp_seg.h"
@@ -35,6 +36,7 @@
 #include "bsp_buzzer.h"
 #include "bsp_freq.h"
 #include "bsp_rgb.h"
+#include "bsp_key.h"
 
 #include "app_types.h"
 /* USER CODE END Includes */
@@ -340,37 +342,74 @@ void StartSensorTask(void *argument)
 void StartLogicTask(void *argument)
 {
   /* USER CODE BEGIN StartLogicTask */
+
+  // 局部变量
+  uint16_t key_event = 0;
+  bool is_muted = false;       // 静音标志位
+  bool alarm_condition = false; // 报警条件汇总
+
   /* Infinite loop */
   for(;;)
   {
     // ==========================================
-    // 1. 温度报警逻辑 (> 30.0 度)
+    // 1. 处理按键事件 (从队列接收)
     // ==========================================
-    if (g_LatestSensorData.temp_celsius > 31.0f)
+    // 使用 0 等待时间，非阻塞查询。如果有按键按下，处理它。
+    if (osMessageQueueGet(q_KeyEvtHandle, &key_event, NULL, 0) == osOK)
     {
-      // 触发：设置标志位
-      osEventFlagsSet(evt_AlarmHandle, ALARM_TEMP_HIGH);
-    }
-    else
-    {
-      // 恢复：清除标志位
-      osEventFlagsClear(evt_AlarmHandle, ALARM_TEMP_HIGH);
+        if (key_event == KEY_0)
+        {
+            printf("[Logic] Key0 Pressed -> Mute Alarm\r\n");
+            is_muted = true; // 激活静音
+        }
     }
 
     // ==========================================
-    // 2. 电压报警逻辑 (> 2.5V, 即 ADC > 3103)
+    // 2. 检查报警条件
     // ==========================================
-    // 3.3V * (1861/4095) ≈ 1.5V
-    if (g_LatestSensorData.adc_raw > 1861)
+    // 判断是否有任意一项异常
+    // 温度 > 30.0 或 电压 > 2.5V (ADC > 3103) - 根据您的代码调整阈值
+    // 这里为了演示，假设阈值是 30度 和 1861(约1.5V，参考您原代码)
+    bool temp_high = (g_LatestSensorData.temp_celsius > 31.0f);
+    bool volt_high = (g_LatestSensorData.adc_raw > 1861);
+
+    alarm_condition = temp_high | volt_high;
+
+    if (alarm_condition)
     {
-      osEventFlagsSet(evt_AlarmHandle, ALARM_VOLT_HIGH);
+        // === 有异常发生 ===
+
+        if (is_muted)
+        {
+            // 如果处于静音状态，强制清除所有报警标志
+            // 这样 AlarmTask 就会检测到无标志，从而关闭蜂鸣器
+            osEventFlagsClear(evt_AlarmHandle, ALARM_TEMP_HIGH | ALARM_VOLT_HIGH);
+        }
+        else
+        {
+            // 如果未静音，根据具体原因设置标志位
+            if (temp_high) osEventFlagsSet(evt_AlarmHandle, ALARM_TEMP_HIGH);
+            if (volt_high) osEventFlagsSet(evt_AlarmHandle, ALARM_VOLT_HIGH);
+        }
     }
     else
     {
-      osEventFlagsClear(evt_AlarmHandle, ALARM_VOLT_HIGH);
+        // === 一切正常 ===
+
+        // 1. 清除报警标志 (停止蜂鸣器)
+        osEventFlagsClear(evt_AlarmHandle, ALARM_TEMP_HIGH | ALARM_VOLT_HIGH);
+
+        // 2. 复位静音状态
+        // 只有当环境恢复正常后，才取消静音。
+        // 这样下次再变异常时，蜂鸣器会再次响起。
+        if (is_muted)
+        {
+            is_muted = false;
+            printf("[Logic] Condition Normal -> Mute Reset\r\n");
+        }
     }
 
-    // 逻辑处理频率不用太高，10Hz 足够
+    // 逻辑处理周期 (100ms)
     osDelay(100);
   }
   /* USER CODE END StartLogicTask */

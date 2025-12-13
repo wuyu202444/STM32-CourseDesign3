@@ -62,6 +62,8 @@
 // 全局传感器数据副本 (公告板)
 // SensorTask 写，LogicTask 读
 SensorData_t g_LatestSensorData = {0};
+// [新增] 显示模式: 0=详细模式(默认), 1=大字体模式
+volatile uint8_t g_DisplayPage = 0;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -362,6 +364,17 @@ void StartLogicTask(void *argument)
             printf("[Logic] Key0 Pressed -> Mute Alarm\r\n");
             is_muted = true; // 激活静音
         }
+      // [新增] KEY1 切换界面
+        else if (key_event == KEY_1)
+        {
+          OLED_Clear();
+          OLED_Refresh();
+          printf("[Logic] Key1 Pressed -> Switch Page\r\n");
+          g_DisplayPage++;
+          if (g_DisplayPage > 1) {
+            g_DisplayPage = 0; // 循环切换：0 -> 1 -> 0
+          }
+        }
     }
 
     // ==========================================
@@ -427,39 +440,65 @@ void StartDisplayTask(void *argument)
   /* USER CODE BEGIN StartDisplayTask */
   SensorData_t recv_data;
   osStatus_t status;
-  char str_buf[32]; // 用于格式化字符串
+  char str_buf[32];
+
   /* Infinite loop */
   for(;;)
   {
-    // ===========================
-    // 1. 尝试从队列获取数据
-    // ===========================
-    // 参数: 队列句柄, 数据接收缓冲指针, 优先级(NULL), 等待时间(0 - 不等待，直接刷新)
-    // 这里的策略是：如果有新数据就更新显示，没数据就保持原样
+    // 1. 获取数据
     status = osMessageQueueGet(q_SensorDataHandle, &recv_data, NULL, 0);
+
+    // 如果没有新数据，可以使用全局缓存 g_LatestSensorData 来刷新界面（防止切换界面时闪烁）
+    // 但为了简单，这里假设数据更新够快。
+
     if (status == osOK)
     {
-      // ===========================
-      // 2. 如果获取成功，更新 OLED
-      // ===========================
+      // [关键修改] 每次刷新前建议清空缓存，或者确保覆盖了旧内容
+      // OLED_Clear(); // 如果您的驱动是全屏刷新模式，可以在这里 clear
 
-      // 显示温度
-      // 假设 OLED_ShowString 和 ShowNum 是您 BSP 里的函数，这里用通用逻辑演示
-      // 建议使用 sprintf 格式化字符串然后一次性显示，更灵活
-      sprintf(str_buf, "T: %.1f C  ", recv_data.temp_celsius);
-      OLED_ShowString(0, 0, (uint8_t *)str_buf, 16, 1); // 假设字体大小16
+      if (g_DisplayPage == 0)
+      {
+        // === 界面 0: 详细数据模式 (Temp + Volt + Freq) ===
 
-      // 显示 ADC 电压
-      // 先转换成电压值: raw * 3.3 / 4095
-      float voltage = recv_data.adc_raw * 3.3f / 4095.0f;
-      sprintf(str_buf, "V: %.2f V  ", voltage);
-      OLED_ShowString(0, 16, (uint8_t *)str_buf, 16, 1); // 第2行
+        // 1. 温度
+        sprintf(str_buf, "T: %.1f C   ", recv_data.temp_celsius);
+        OLED_ShowString(0, 0, (uint8_t *)str_buf, 16, 1);
 
-      // 调试打印：确认接收端也收到了
-      printf("[Disp] Recv OK! T:%.1f\r\n", recv_data.temp_celsius);
+        // 2. 电压
+        float voltage = recv_data.adc_raw * 3.3f / 4095.0f;
+        sprintf(str_buf, "V: %.2f V   ", voltage);
+        OLED_ShowString(0, 16, (uint8_t *)str_buf, 16, 1);
+
+        // 3. [新增] 频率
+        // 如果频率很大，可以使用 %.1f kHz
+        if(recv_data.freq_hz < 10000)
+          sprintf(str_buf, "F: %lu Hz   ", recv_data.freq_hz);
+        else
+          sprintf(str_buf, "F: %.1f kHz ", recv_data.freq_hz / 1000.0f);
+
+        OLED_ShowString(0, 32, (uint8_t *)str_buf, 16, 1);
+
+        // 状态栏
+        OLED_ShowString(0, 48, "Mode: Detail", 12, 1);
+      }
+      else
+      {
+        // === 界面 1: 极简模式 (大字体温度) ===
+        // 假设您没有移植大字体库，这里用普通字体模拟或仅显示核心信息
+
+        OLED_ShowString(18, 0, "Temp Monitor", 16, 1);
+
+        // 显示大一点的数值 (如果有 24号字体可以用 24)
+        sprintf(str_buf, "%.1f C", recv_data.temp_celsius);
+        OLED_ShowString(32, 18, (uint8_t *)str_buf, 24, 1); // 居中一点
+
+        // 底部提示按键功能
+        OLED_ShowString(0, 48, "K1:Switch View", 12, 1);
+      }
     }
+
     OLED_Refresh();
-    osDelay(50);
+    osDelay(100); // 刷新率 10Hz
   }
   /* USER CODE END StartDisplayTask */
 }

@@ -21,6 +21,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     {
         key_id = KEY_0;
     }
+    else if (GPIO_Pin == KEY1_Pin)
+    {
+        key_id = KEY_1;
+    }
     // 可以在这里扩展 KEY1, KEY2...
 
     if (key_id != KEY_NONE)

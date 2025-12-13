@@ -33,6 +33,7 @@
 #include "bsp_lm75.h"
 #include "bsp_adc.h"
 #include "bsp_buzzer.h"
+#include "bsp_freq.h"
 
 #include "app_types.h"
 /* USER CODE END Includes */
@@ -230,6 +231,9 @@ void StartDefaultTask(void *argument)
   // 1.2 ADC (DMA)
   BSP_ADC_Init();
   printf("[OK] ADC DMA Started\r\n");
+  // [新增] 初始化频率测量
+  BSP_Freq_Init();
+  printf("[OK] TIM4 Freq Input Capture Started\r\n");
 
   printf("System Startup Success!\r\n");
 
@@ -271,14 +275,16 @@ void StartSensorTask(void *argument)
     // 1. 获取数据 (Acquire)
     // ===========================
 
-    // 读取 LM75 温度
+    // 读取 LM75 (建议加上互斥锁，虽然目前单任务访问不出错，但习惯要好)
+    osMutexAcquire(m_I2CHandle, osWaitForever); // [可选优化]
     current_data.temp_celsius = BSP_LM75_ReadTemp();
+    osMutexRelease(m_I2CHandle);                // [可选优化]
 
-    // 读取 ADC (直接从 DMA 缓冲区获取，无延迟)
+    // 读取 ADC
     current_data.adc_raw = BSP_ADC_GetRaw();
 
-    // 读取频率 (目前预留，赋值为 0)
-    current_data.freq_hz = 0;
+    // 读取频率 [修改此处]
+    current_data.freq_hz = BSP_Freq_Get();
 
     // >>>>> [新增] 更新全局副本，供 LogicTask 使用 <<<<<
     g_LatestSensorData = current_data;
@@ -296,12 +302,11 @@ void StartSensorTask(void *argument)
     // 3. 调试打印 (Debug Print)
     // ===========================
 
-    // 打印当前读数和队列发送状态 (OK=0)
-    // 注意: 在高频中断或极度繁忙系统中 printf 可能会阻塞，调试完可注释掉
-    printf("[Sensor] T:%.1f C, ADC:%d, Q_St:%d\r\n",
+    // 调试打印 (更新一下格式，把频率也打出来)
+    printf("[Sensor] T:%.1f C, ADC:%d, Freq:%lu Hz\r\n",
            current_data.temp_celsius,
            current_data.adc_raw,
-           status);
+           current_data.freq_hz);
 
     // ===========================
     // 4. 任务调度 (Delay)

@@ -37,6 +37,7 @@
 #include "bsp_freq.h"
 #include "bsp_rgb.h"
 #include "bsp_key.h"
+#include "bsp_bt.h"
 
 #include "app_types.h"
 /* USER CODE END Includes */
@@ -135,6 +136,13 @@ const osThreadAttr_t RGBTask_attributes = {
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for BluetoothTask */
+osThreadId_t BluetoothTaskHandle;
+const osThreadAttr_t BluetoothTask_attributes = {
+  .name = "BluetoothTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* Definitions for q_SensorData */
 osMessageQueueId_t q_SensorDataHandle;
 const osMessageQueueAttr_t q_SensorData_attributes = {
@@ -173,6 +181,7 @@ void StartDisplayTask(void *argument);
 void StartAlarmTask(void *argument);
 void StartKeepAlive(void *argument);
 void StartRGBTask(void *argument);
+void StartBluetoothTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -236,6 +245,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of RGBTask */
   RGBTaskHandle = osThreadNew(StartRGBTask, NULL, &RGBTask_attributes);
+
+  /* creation of BluetoothTask */
+  BluetoothTaskHandle = osThreadNew(StartBluetoothTask, NULL, &BluetoothTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -351,10 +363,10 @@ void StartSensorTask(void *argument)
     // ===========================
 
     // 调试打印 (更新一下格式，把频率也打出来)
-    printf("[Sensor] T:%.1f C, ADC:%d, Freq:%lu Hz\r\n",
-           current_data.temp_celsius,
-           current_data.adc_raw,
-           current_data.freq_hz);
+    // printf("[Sensor] T:%.1f C, ADC:%d, Freq:%lu Hz\r\n",
+    //        current_data.temp_celsius,
+    //        current_data.adc_raw,
+    //        current_data.freq_hz);
 
     // ===========================
     // 4. 任务调度 (Delay)
@@ -421,7 +433,7 @@ void StartLogicTask(void *argument)
     // 判断是否有任意一项异常
     // 温度 > 30.0 或 电压 > 2.5V (ADC > 3103) - 根据您的代码调整阈值
     // 这里为了演示，假设阈值是 30度 和 1861(约1.5V，参考您原代码)
-    bool temp_high = (g_LatestSensorData.temp_celsius > 31.0f);
+    bool temp_high = (g_LatestSensorData.temp_celsius > 35.0f);
     bool volt_high = (g_LatestSensorData.adc_raw > 1861);
 
     alarm_condition = temp_high | volt_high;
@@ -762,6 +774,25 @@ void StartRGBTask(void *argument)
     }
   }
   /* USER CODE END StartRGBTask */
+}
+
+/* USER CODE BEGIN Header_StartBluetoothTask */
+/**
+* @brief Function implementing the BluetoothTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartBluetoothTask */
+void StartBluetoothTask(void *argument)
+{
+  /* USER CODE BEGIN StartBluetoothTask */
+  BSP_BT_Init();
+  /* Infinite loop */
+  for(;;)
+  {
+    BSP_BT_ProcessTask(&g_LatestSensorData);
+  }
+  /* USER CODE END StartBluetoothTask */
 }
 
 /* Private application code --------------------------------------------------*/

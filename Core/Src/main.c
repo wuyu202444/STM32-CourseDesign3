@@ -29,7 +29,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "bsp_bt.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -102,6 +102,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM4_Init();
   MX_TIM1_Init();
+  MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -183,6 +184,15 @@ int __io_getchar(void) {
   uint8_t ch = 0;
   HAL_UART_Receive(&huart2, &ch, 1, HAL_MAX_DELAY);
   return ch;
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  // 调用蓝牙模块的接收处理
+  BSP_BT_RxCallback(huart);
+
+  // 如果你有其他串口（比如 Debug 口），可以在这里加 else if
+  // if (huart->Instance == USART1) { ... }
 }
 /* USER CODE END 4 */
 

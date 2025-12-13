@@ -34,6 +34,7 @@
 #include "bsp_adc.h"
 #include "bsp_buzzer.h"
 #include "bsp_freq.h"
+#include "bsp_rgb.h"
 
 #include "app_types.h"
 /* USER CODE END Includes */
@@ -112,6 +113,11 @@ osMessageQueueId_t q_KeyEvtHandle;
 const osMessageQueueAttr_t q_KeyEvt_attributes = {
   .name = "q_KeyEvt"
 };
+/* Definitions for q_RGBCmd */
+osMessageQueueId_t q_RGBCmdHandle;
+const osMessageQueueAttr_t q_RGBCmd_attributes = {
+  .name = "q_RGBCmd"
+};
 /* Definitions for m_I2C */
 osMutexId_t m_I2CHandle;
 const osMutexAttr_t m_I2C_attributes = {
@@ -168,6 +174,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of q_KeyEvt */
   q_KeyEvtHandle = osMessageQueueNew (4, sizeof(uint16_t), &q_KeyEvt_attributes);
+
+  /* creation of q_RGBCmd */
+  q_RGBCmdHandle = osMessageQueueNew (4, 16, &q_RGBCmd_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -234,6 +243,9 @@ void StartDefaultTask(void *argument)
   // [新增] 初始化频率测量
   BSP_Freq_Init();
   printf("[OK] TIM4 Freq Input Capture Started\r\n");
+  //
+  BSP_RGB_Init();
+  printf("[OK] RGB Init\r\n");
 
   printf("System Startup Success!\r\n");
 

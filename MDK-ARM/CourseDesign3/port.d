@@ -1,0 +1,12 @@
+coursedesign3\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F/port.c
+coursedesign3\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
+coursedesign3\port.o: D:\AAAwork\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+coursedesign3\port.o: D:\AAAwork\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+coursedesign3\port.o: ../Core/Inc/FreeRTOSConfig.h
+coursedesign3\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
+coursedesign3\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h
+coursedesign3\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h
+coursedesign3\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F/portmacro.h
+coursedesign3\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h
+coursedesign3\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
+coursedesign3\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h

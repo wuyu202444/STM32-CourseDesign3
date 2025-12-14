@@ -70,6 +70,8 @@
 /* --- RGB 报警闪烁配置 --- */
 // 4. 闪烁周期 (ms): 100ms亮 -> 100ms灭 (5Hz)
 #define RGB_BLINK_PERIOD_MS        100
+
+#define BUZZER_ALARM_SOUND    2
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -84,8 +86,8 @@
 SensorData_t g_LatestSensorData = {0};
 
 /* --- 全局控制标志 --- */
-// 显示模式: 0=详细模式(默认), 1=大字体模式
-volatile uint8_t g_DisplayPage = 0;
+// 显示模式: 1=详细模式(默认), 2=大字体模式
+volatile uint8_t g_DisplayPage = 1; // <--- 修改此处：初始化为 1
 
 // 报警温度阈值 (LogicTask更新, DisplayTask读取)
 volatile float g_AlarmThreshold = 30.0f;
@@ -310,7 +312,7 @@ void StartDefaultTask(void *argument)
     static uint32_t count = 0;
 
     // 数码管扫描 (如果是动态扫描，需要高频调用)
-    BSP_LEDSEG_ShowNum(1, 2);
+    BSP_LEDSEG_ShowNum(0, g_DisplayPage);
 
     // 心跳灯 LED3
     if (count == 200) // 约 1000ms 翻转一次 (5ms * 200)
@@ -419,7 +421,12 @@ void StartLogicTask(void *argument)
 
           case KEY_1: // 切换界面
             printf("[Logic] Key1 -> Switch Page\r\n");
-            g_DisplayPage = (g_DisplayPage + 1) % 2; // 0->1->0 循环
+          // <--- 修改开始: 1和2之间循环切换 --->
+          if (g_DisplayPage == 1) {
+            g_DisplayPage = 2;
+          } else {
+            g_DisplayPage = 1;
+          }
             // 切换时刷新一次屏幕防止残影 (可选，交给 DisplayTask 亦可)
             OLED_Clear();
             OLED_Refresh();
@@ -511,9 +518,9 @@ void StartDisplayTask(void *argument)
     // 等待数据更新
     if (osMessageQueueGet(q_SensorDataHandle, &recv_data, NULL, 0) == osOK)
     {
-      if (g_DisplayPage == 0)
+      if (g_DisplayPage == 2)
       {
-        /* --- Page 0: 详细模式 --- */
+        /* --- Page 2: 详细模式 --- */
 
         // 1. Temp
         sprintf(str_buf, "T: %.1f C   ", recv_data.temp_celsius);
@@ -583,9 +590,9 @@ void StartAlarmTask(void *argument)
 
       // 1. 开始鸣叫 (Sound On)
       if (flags & ALARM_TEMP_HIGH) {
-        BSP_Buzzer_SetTone(2000, 2); // 高温: 急促高音
+        BSP_Buzzer_SetTone(2000, BUZZER_ALARM_SOUND); // 高温: 急促高音
       } else {
-        BSP_Buzzer_SetTone(1000, 1); // 电压: 低沉声音
+        BSP_Buzzer_SetTone(1000, BUZZER_ALARM_SOUND); // 电压: 低沉声音
       }
       osDelay(100);
 
